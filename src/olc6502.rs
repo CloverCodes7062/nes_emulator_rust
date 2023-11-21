@@ -300,131 +300,247 @@ impl CPU {
         0
     }
 
-    pub fn bcc () -> u8 {
+    pub fn bcc (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::C) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn bcs () -> u8 {
+    pub fn bcs (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::C) != 0 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn beq () -> u8 {
+    pub fn beq (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::Z) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn bit () -> u8 {
+    pub fn bit (&mut self) -> u8 {
         0
     }
 
-    pub fn bmi () -> u8 {
+    pub fn bmi (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::N) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn bne () -> u8 {
+    pub fn bne (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::Z) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn bpl () -> u8 {
+    pub fn bpl (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::N) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn brk () -> u8 {
+    pub fn brk (&mut self) -> u8 {
+        self.registers.pc += 1;
+
+        self.set_flag(FLAGS6502::I, true);
+        self.registers.stkp -= 1;
+        self.write(0x0100 + (self.registers.stkp as u16), (self.registers.pc >> 8) as u8);
+        self.registers.stkp -= 1;
+        self.write(0x0100 + (self.registers.stkp as u16), self.registers.pc as u8);
+
+        self.set_flag(FLAGS6502::B, true);
+        self.write(0x100 + (self.registers.stkp as u16), self.registers.status);
+        self.registers.stkp -= 1;
+        self.set_flag(FLAGS6502::B, false);
+
+        self.registers.pc = (self.read(0xFFFE) as u16) | ((self.read(0xFFFF) as u16) << 8);
+
         0
     }
 
-    pub fn bvc () -> u8 {
+    pub fn bvc (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::V) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn bvs () -> u8 {
+    pub fn bvs (&mut self) -> u8 {
+        if self.get_flag(FLAGS6502::V) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.registers.pc + (self.addr_rel as u16);
+
+            if self.addr_abs & 0xFF00 != self.registers.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.registers.pc = self.addr_abs;
+        }
+
         0
     }
 
-    pub fn clc () -> u8 {
+    pub fn clc (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::C, false);
+
         0
     }
 
-    pub fn cld () -> u8 {
+    pub fn cld (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::D, false);
+
         0
     }
 
-    pub fn cli () -> u8 {
+    pub fn cli (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::I, false);
+
         0
     }
 
-    pub fn clv () -> u8 {
+    pub fn clv (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::V, false);
         0
     }
 
-    pub fn cmp () -> u8 {
+    pub fn cmp (&mut self) -> u8 {
+        self.fetch();
+        let temp = (self.registers.a as u16) - self.fetched as u16;
+        self.set_flag(FLAGS6502::C, self.registers.a >= (temp as u8));
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        1
+    }
+
+    pub fn cpx (&mut self) -> u8 {
         0
     }
 
-    pub fn cpx () -> u8 {
+    pub fn cpy (&mut self) -> u8 {
         0
     }
 
-    pub fn cpy () -> u8 {
+    pub fn dec (&mut self) -> u8 {
         0
     }
 
-    pub fn dec () -> u8 {
+    pub fn dex (&mut self) -> u8 {
         0
     }
 
-    pub fn dex () -> u8 {
+    pub fn dey (&mut self) -> u8 {
         0
     }
 
-    pub fn dey () -> u8 {
+    pub fn eor (&mut self) -> u8 {
         0
     }
 
-    pub fn eor () -> u8 {
+    pub fn inc (&mut self) -> u8 {
         0
     }
 
-    pub fn inc () -> u8 {
+    pub fn inx (&mut self) -> u8 {
         0
     }
 
-    pub fn inx () -> u8 {
+    pub fn iny (&mut self) -> u8 {
         0
     }
 
-    pub fn iny () -> u8 {
+    pub fn jmp (&mut self) -> u8 {
         0
     }
 
-    pub fn jmp () -> u8 {
+    pub fn jsr (&mut self) -> u8 {
         0
     }
 
-    pub fn jsr () -> u8 {
+    pub fn lda (&mut self) -> u8 {
         0
     }
 
-    pub fn lda () -> u8 {
+    pub fn ldx (&mut self) -> u8 {
         0
     }
 
-    pub fn ldx () -> u8 {
+    pub fn ldy (&mut self) -> u8 {
         0
     }
 
-    pub fn ldy () -> u8 {
+    pub fn lsr (&mut self) -> u8 {
         0
     }
 
-    pub fn lsr () -> u8 {
+    pub fn nop (&mut self) -> u8 {
         0
     }
 
-    pub fn nop () -> u8 {
-        0
-    }
-
-    pub fn ora () -> u8 {
+    pub fn ora (&mut self) -> u8 {
         0
     }
 
@@ -448,15 +564,15 @@ impl CPU {
         0
     }
 
-    pub fn plp () -> u8 {
+    pub fn plp (&mut self) -> u8 {
         0
     }
 
-    pub fn rol () -> u8 {
+    pub fn rol (&mut self) -> u8 {
         0
     }
 
-    pub fn ror () -> u8 {
+    pub fn ror (&mut self) -> u8 {
         0
     }
 
@@ -476,7 +592,7 @@ impl CPU {
         0
     }
 
-    pub fn rts () -> u8 {
+    pub fn rts (&mut self) -> u8 {
         0
     }
 
@@ -498,56 +614,56 @@ impl CPU {
         0
     }
 
-    pub fn sec () -> u8 {
+    pub fn sec (&mut self) -> u8 {
         0
     }
 
-    pub fn sed () -> u8 {
+    pub fn sed (&mut self) -> u8 {
         0
     }
 
-    pub fn sei () -> u8 {
+    pub fn sei (&mut self) -> u8 {
         0
     }
 
-    pub fn sta () -> u8 {
+    pub fn sta (&mut self) -> u8 {
         0
     }
 
-    pub fn stx () -> u8 {
+    pub fn stx (&mut self) -> u8 {
         0
     }
 
-    pub fn sty () -> u8 {
+    pub fn sty (&mut self) -> u8 {
         0
     }
 
-    pub fn tax () -> u8 {
+    pub fn tax (&mut self) -> u8 {
         0
     }
 
-    pub fn tay () -> u8 {
+    pub fn tay (&mut self) -> u8 {
         0
     }
 
-    pub fn tsx () -> u8 {
+    pub fn tsx (&mut self) -> u8 {
         0
     }
 
-    pub fn txa () -> u8 {
+    pub fn txa (&mut self) -> u8 {
         0
     }
 
-    pub fn txs () -> u8 {
+    pub fn txs (&mut self) -> u8 {
         0
     }
 
-    pub fn tya () -> u8 {
+    pub fn tya (&mut self) -> u8 {
         0
     }
 
     // Illegal Opcodes
-    pub fn xxx() -> u8 {
+    pub fn xxx(&mut self) -> u8 {
         0
     }
 
