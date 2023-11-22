@@ -3,6 +3,7 @@ use std::vec;
 use crate::bus::Bus;
 
 
+#[derive(Debug)]
 pub struct CPU {
     bus: Bus,
     registers: Registers,
@@ -64,6 +65,19 @@ impl CPU {
                 INSTRUCTION{ name: "???".to_string(), operate: CPU::nop, addr_mode: CPU::imp, cycles: 4 }, INSTRUCTION{ name: "SBC".to_string(), operate: CPU::sbc, addr_mode: CPU::abx, cycles: 4 }, INSTRUCTION{ name: "INC".to_string(), operate: CPU::inc, addr_mode: CPU::abx, cycles: 7 }, INSTRUCTION{ name: "???".to_string(), operate: CPU::xxx, addr_mode: CPU::imp, cycles: 7 },
             ],
         }
+    }
+
+    // DELTE ALL TEST FUNCS LATER
+    pub fn test_lookup(&mut self, addr: u16) -> &INSTRUCTION {
+        &self.lookup[addr as usize]
+    }
+
+    pub fn test_view_registers(&mut self) -> &Registers {
+        &self.registers
+    }
+
+    pub fn test_view_status_reg(&mut self) -> u8 {
+        self.registers.status
     }
 
     // Read and Write
@@ -468,7 +482,7 @@ impl CPU {
 
     pub fn cmp (&mut self) -> u8 {
         self.fetch();
-        let temp = (self.registers.a as u16) - self.fetched as u16;
+        let temp = (self.registers.a as u16) - (self.fetched as u16);
         self.set_flag(FLAGS6502::C, self.registers.a >= (temp as u8));
         self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x0000);
         self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
@@ -477,34 +491,76 @@ impl CPU {
     }
 
     pub fn cpx (&mut self) -> u8 {
-        0
+        self.fetch();
+        let temp = (self.registers.x as u16) - (self.fetched as u16);
+        self.set_flag(FLAGS6502::C, self.registers.x >= (temp as u8));
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        1
     }
 
     pub fn cpy (&mut self) -> u8 {
-        0
+        self.fetch();
+        let temp = (self.registers.y as u16) - (self.fetched as u16);
+        self.set_flag(FLAGS6502::C, self.registers.y >= (temp as u8));
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        1
     }
 
     pub fn dec (&mut self) -> u8 {
+        self.fetch();
+        let temp = self.fetched - 1;
+        self.write(self.addr_abs, temp & 0x00FF);
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
         0
     }
 
     pub fn dex (&mut self) -> u8 {
+        self.registers.x = self.registers.x - 1;
+        self.set_flag(FLAGS6502::Z, self.registers.x == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.x & 0x0080) != 0);
+
         0
     }
 
     pub fn dey (&mut self) -> u8 {
+        self.registers.y = self.registers.y - 1;
+        self.set_flag(FLAGS6502::Z, self.registers.y == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.y & 0x0080) != 0);
+
         0
     }
 
     pub fn eor (&mut self) -> u8 {
-        0
+        self.fetch();
+
+        self.registers.a = self.registers.a ^ self.fetched;
+        self.set_flag(FLAGS6502::Z, self.registers.a == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.a & 0x0080) != 0);
+
+        1
     }
 
     pub fn inc (&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.fetched + 1;
+        self.write(self.addr_abs, temp & 0x00FF);
+
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
         0
     }
 
     pub fn inx (&mut self) -> u8 {
+
+        
         0
     }
 
@@ -754,6 +810,7 @@ pub enum FLAGS6502 {
     N = (1 << 7), // Negative
 }
 
+#[derive(Debug)]
 pub struct Registers {
     a: u8,
     x: u8,
@@ -777,7 +834,7 @@ impl Registers {
 }
 
 #[derive(Debug)]
-struct INSTRUCTION {
+pub struct INSTRUCTION {
     name: String,
     operate: fn(&mut CPU) -> u8,
     addr_mode: fn(&mut CPU) -> u8,

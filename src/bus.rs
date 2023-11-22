@@ -1,5 +1,6 @@
 use crate::olc6502::CPU;
 
+#[derive(Debug)]
 pub struct Bus {
     ram: [u8; 64 * 1024],
 }

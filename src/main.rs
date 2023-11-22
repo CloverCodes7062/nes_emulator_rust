@@ -7,4 +7,5 @@ use olc6502::CPU;
 
 fn main() {
     let mut cpu = CPU::new();
+    
 }
