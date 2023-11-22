@@ -514,7 +514,7 @@ impl CPU {
         self.fetch();
         let temp = self.fetched - 1;
         self.write(self.addr_abs, temp & 0x00FF);
-        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0);
+        self.set_flag(FLAGS6502::Z, (temp & 0x00) == 0);
         self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
 
         0
@@ -552,32 +552,55 @@ impl CPU {
         let temp = self.fetched + 1;
         self.write(self.addr_abs, temp & 0x00FF);
 
-        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0);
+        self.set_flag(FLAGS6502::Z, (temp & 0x00) == 0);
         self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
 
         0
     }
 
     pub fn inx (&mut self) -> u8 {
+        self.registers.x = self.registers.x - 1;
+        self.set_flag(FLAGS6502::Z, (self.registers.x & 0x00) == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.x & 0x80) != 0);
 
-        
         0
     }
 
     pub fn iny (&mut self) -> u8 {
+        self.registers.y = self.registers.y - 1;
+        self.set_flag(FLAGS6502::Z, (self.registers.y & 0x00) == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.y & 0x80) != 0);
+
         0
     }
 
     pub fn jmp (&mut self) -> u8 {
+        self.registers.pc = self.addr_abs;
+
         0
     }
 
     pub fn jsr (&mut self) -> u8 {
+        self.registers.pc -= 1;
+
+        self.write(0x0100 + (self.registers.stkp as u16), (self.registers.pc >> 8) as u8);
+        self.registers.stkp -= 1;
+        self.write(0x0100 + (self.registers.stkp as u16), (self.registers.pc & 0x00FF) as u8);
+        self.registers.stkp -= 1;
+
+        self.registers.pc = self.addr_abs;
+
         0
     }
 
     pub fn lda (&mut self) -> u8 {
-        0
+        self.fetch();
+        self.registers.a = self.fetched;
+
+        self.set_flag(FLAGS6502::Z, (self.registers.a & 0x00) == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.a & 0x80) != 0);
+
+        1
     }
 
     pub fn ldx (&mut self) -> u8 {
