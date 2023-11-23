@@ -477,6 +477,7 @@ impl CPU {
 
     pub fn clv (&mut self) -> u8 {
         self.set_flag(FLAGS6502::V, false);
+
         0
     }
 
@@ -624,10 +625,28 @@ impl CPU {
     }
 
     pub fn lsr (&mut self) -> u8 {
+        self.fetch();
+        self.set_flag(FLAGS6502::C, (self.fetched & 0x0001) != 0);
+
+        let temp = self.fetched >> 1;
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x00);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addr_mode == CPU::imp {
+            self.registers.a = temp & 0x00FF;
+        } else {
+            self.write(self.addr_abs, temp & 0x00FF);
+        }
+
         0
     }
 
     pub fn nop (&mut self) -> u8 {
+        match self.opcode {
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => true,
+            _=> panic!("Unimplemented NOP")
+        };
+
         0
     }
 
@@ -675,10 +694,35 @@ impl CPU {
     }
 
     pub fn rol (&mut self) -> u8 {
+        self.fetch();
+        let temp = (self.fetched as u16) << 1 | (self.get_flag(FLAGS6502::C) as u16);
+        self.set_flag(FLAGS6502::C, (temp & 0xFF00) != 0);
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) != 0);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addr_mode == CPU::imp {
+            self.registers.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
         0
     }
 
     pub fn ror (&mut self) -> u8 {
+        self.fetch();
+
+        let temp = (self.get_flag(FLAGS6502::C) as u16) << 7 | (self.fetched as u16) >> 1;
+        self.set_flag(FLAGS6502::C, (self.fetched & 0x01) != 0);
+        self.set_flag(FLAGS6502::Z, (temp & 0x00FF) == 0x00);
+        self.set_flag(FLAGS6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addr_mode == CPU::imp {
+            self.registers.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
         0
     }
 
@@ -699,6 +743,17 @@ impl CPU {
     }
 
     pub fn rts (&mut self) -> u8 {
+        self.registers.stkp += 1;
+        let lo = self.read(0x0100 + (self.registers.stkp as u16));
+        self.registers.stkp += 1;
+        let hi = self.read(0x0100 + (self.registers.stkp as u16));
+
+        let value = (hi as u16) | (lo as u16);
+
+        self.registers.pc = value;
+        
+        self.registers.pc += 1;
+
         0
     }
 
@@ -757,26 +812,53 @@ impl CPU {
     }
 
     pub fn tax (&mut self) -> u8 {
+        self.registers.x = self.registers.a;
+
+        self.set_flag(FLAGS6502::Z, self.registers.x == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.x & 0x80) != 0);
+
         0
     }
 
     pub fn tay (&mut self) -> u8 {
+        self.registers.y = self.registers.a;
+
+        self.set_flag(FLAGS6502::Z, self.registers.y == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.y & 0x80) != 0);
+
         0
     }
 
     pub fn tsx (&mut self) -> u8 {
+        self.registers.x = self.registers.stkp;
+
+        self.set_flag(FLAGS6502::Z, self.registers.x == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.x & 0x80) != 0);
+
         0
     }
 
     pub fn txa (&mut self) -> u8 {
+        self.registers.a = self.registers.x;
+
+        self.set_flag(FLAGS6502::Z, self.registers.a == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.a & 0x80) != 0);
+
         0
     }
 
     pub fn txs (&mut self) -> u8 {
+        self.registers.stkp = self.registers.x;
+
         0
     }
 
     pub fn tya (&mut self) -> u8 {
+        self.registers.a = self.registers.y;
+
+        self.set_flag(FLAGS6502::Z, self.registers.y == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.y & 0x80) != 0);
+
         0
     }
 
