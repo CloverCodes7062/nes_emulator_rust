@@ -82,15 +82,15 @@ impl CPU {
 
     // Read and Write
     pub fn write(&mut self, addr: u16, data: u8) {
-        self.bus.write(addr, data);
+        self.bus.cpu_write(addr, data);
     }
 
     pub fn read(&mut self, addr: u16) -> u8 {
-        self.bus.read(addr)
+        self.bus.cpu_read(addr)
     }
 
     pub fn read_with_read_only(&mut self, addr: u16, b_read_only: bool) -> u8 {
-        self.bus.read_with_read_only(addr, b_read_only)
+        self.bus.cpu_read_with_read_only(addr, b_read_only)
     }
 
     // Clock
