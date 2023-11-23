@@ -604,11 +604,23 @@ impl CPU {
     }
 
     pub fn ldx (&mut self) -> u8 {
-        0
+        self.fetch();
+        self.registers.x = self.fetched;
+
+        self.set_flag(FLAGS6502::Z, (self.registers.x & 0x00) == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.x & 0x80) != 0);
+
+        1
     }
 
     pub fn ldy (&mut self) -> u8 {
-        0
+        self.fetch();
+        self.registers.y = self.fetched;
+
+        self.set_flag(FLAGS6502::Z, (self.registers.y & 0x00) == 0);
+        self.set_flag(FLAGS6502::N, (self.registers.y & 0x80) != 0);
+
+        1
     }
 
     pub fn lsr (&mut self) -> u8 {
@@ -620,7 +632,13 @@ impl CPU {
     }
 
     pub fn ora (&mut self) -> u8 {
-        0
+        self.fetch();
+
+        self.registers.a = self.registers.a | self.fetched;
+        self.set_flag(FLAGS6502::Z, self.registers.a == 0x00);
+        self.set_flag(FLAGS6502::N, (self.registers.a & 0x80) != 0);
+
+        1
     }
 
     pub fn pha (&mut self) -> u8 {
@@ -631,6 +649,11 @@ impl CPU {
     }
 
     pub fn php (&mut self) -> u8 {
+        self.write(0x100 + (self.registers.stkp as u16), self.registers.status | (FLAGS6502::B as u8) | (FLAGS6502::U as u8));
+        self.set_flag(FLAGS6502::B, false);
+        self.set_flag(FLAGS6502::U, false);
+        self.registers.stkp -= 1;
+
         0
     }
 
@@ -644,6 +667,10 @@ impl CPU {
     }
 
     pub fn plp (&mut self) -> u8 {
+        self.registers.stkp += 1;
+        self.registers.status = self.read(0x0100 + (self.registers.stkp as u16));
+        self.set_flag(FLAGS6502::U, true);
+
         0
     }
 
@@ -694,26 +721,38 @@ impl CPU {
     }
 
     pub fn sec (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::C, true);
+
         0
     }
 
     pub fn sed (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::D, true);
+
         0
     }
 
     pub fn sei (&mut self) -> u8 {
+        self.set_flag(FLAGS6502::I, true);
+
         0
     }
 
     pub fn sta (&mut self) -> u8 {
+        self.write(self.addr_abs, self.registers.a);
+
         0
     }
 
     pub fn stx (&mut self) -> u8 {
+        self.write(self.addr_abs, self.registers.x);
+
         0
     }
 
     pub fn sty (&mut self) -> u8 {
+        self.write(self.addr_abs, self.registers.y);
+
         0
     }
 
